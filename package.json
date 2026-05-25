@@ -1,0 +1,21 @@
+{
+  "name": "wechat-auto-publisher",
+  "version": "1.0.0",
+  "description": "微信公众号自动发布管理系统 - AI 驱动的独立运行应用",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "keywords": [
+    "wechat",
+    "auto-publish",
+    "n8n"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "node-cron": "^4.2.1"
+  }
+}

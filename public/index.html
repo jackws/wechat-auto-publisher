@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>公众号助手</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body x-data="app()" x-init="init()">
+
+  <!-- Toast -->
+  <div x-show="toast.show" x-transition
+       :class="toast.type === 'success' ? 'toast-success' : 'toast-error'"
+       class="toast" x-text="toast.message"></div>
+
+  <!-- Top Bar -->
+  <header class="top-bar">
+    <div class="top-bar-brand">
+      <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--primary)">
+        <path d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" stroke-width="1.5"/>
+      </svg>
+      <span>公众号助手</span>
+    </div>
+    <div class="top-bar-actions">
+      <button @click="openAdmin()" class="top-bar-btn" title="系统管理">
+        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3" stroke-width="1.5"/>
+          <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- ==================== GENERATE ==================== -->
+    <div x-data="generatePage()" x-init="init()">
+
+      <!-- Step 0: 绑定公众号 -->
+      <div class="card bind-card step-enter" x-show="step === 0">
+        <div class="card-header card-header-no-hover">
+          <div style="display:flex;align-items:center;gap:0.75rem">
+            <div class="card-icon green">
+              <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke-width="1.5"/></svg>
+            </div>
+            <div>
+              <div class="card-title">绑定你的公众号</div>
+              <div class="card-subtitle">文章将发布到你自己的微信草稿箱</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">AppID</label>
+            <input type="text" x-model="wechatId" class="form-input" placeholder="你的微信公众号 AppID">
+          </div>
+          <div class="form-group">
+            <label class="form-label">AppSecret</label>
+            <input type="password" x-model="wechatSecret" class="form-input" placeholder="你的微信公众号 AppSecret">
+          </div>
+          <div x-show="wechatError" class="error-box" style="margin-bottom:0.75rem" x-text="wechatError"></div>
+          <button @click="verifyWechat()" :disabled="verifying" class="btn btn-primary" style="width:100%">
+            <span x-show="!verifying">验证并保存</span>
+            <span x-show="verifying">验证中...</span>
+          </button>
+          <div style="margin-top:0.75rem;text-align:center">
+            <a @click.prevent="openHelpPanel('wechat-setup')" href="#" style="font-size:0.8125rem;color:var(--text-muted);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:0.375rem;transition:var(--transition)">
+              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="1.5"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" stroke-width="1.5" stroke-linecap="round"/><path d="M12 17h.01" stroke-width="1.5" stroke-linecap="round"/></svg>
+              如何获取 AppID 和 AppSecret？
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 1: 输入主题 -->
+      <div x-show="step === 1" class="step-enter">
+        <div class="hero-section">
+          <div style="display:flex;align-items:center;justify-content:center;gap:0.75rem;margin-bottom:1rem">
+            <span style="font-size:0.8125rem;color:var(--text-secondary)">已绑定公众号</span>
+            <button @click="unbindWechat()" class="btn btn-sm btn-ghost" style="font-size:0.75rem">解绑</button>
+          </div>
+          <h1 class="hero-title">你今天想写什么？</h1>
+          <p class="hero-subtitle">输入一个主题，AI 自动帮你写成文章</p>
+          <div class="topic-input-wrap">
+            <textarea x-model="topic" class="input-hero" placeholder="例如：30岁女性如何平衡家庭和事业&#10;职场新人快速成长的5个方法&#10;婚姻中最重要的能力是什么"></textarea>
+          </div>
+          <div class="example-topics">
+            <span class="example-topic" @click="topic = '30岁女性如何平衡家庭和事业'">30岁女性如何平衡家庭和事业</span>
+            <span class="example-topic" @click="topic = '职场新人快速成长的5个方法'">职场新人快速成长的5个方法</span>
+            <span class="example-topic" @click="topic = '婚姻中最重要的能力是什么'">婚姻中最重要的能力是什么</span>
+            <span class="example-topic" @click="topic = '一个人开始废掉的3个迹象'">一个人开始废掉的3个迹象</span>
+            <span class="example-topic" @click="topic = '普通人和优秀者的差距'">普通人和优秀者的差距</span>
+          </div>
+          <div class="generate-btn-wrap">
+            <button @click="startGeneration()" :disabled="generating || !topic.trim()" class="btn-hero">
+              <span x-show="!generating">✨ 生成文章</span>
+              <span x-show="generating">生成中...</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: 生成中 / 预览 -->
+      <div class="card step-enter" style="margin-bottom:1rem" x-show="step === 2">
+        <div class="card-header" style="cursor:default">
+          <div class="card-title">
+            <span x-show="generating">正在生成...</span>
+            <span x-show="!generating && article">生成完成</span>
+            <span x-show="!generating && !article && error">生成失败</span>
+          </div>
+          <div x-show="generating" style="display:flex;align-items:center;gap:0.5rem">
+            <div class="loading-dot"></div>
+            <span class="loading-text" x-text="statusMessage"></span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div x-show="streamingContent" class="stream-content" x-text="streamingContent"></div>
+          <div x-show="article">
+            <div class="article-title" x-text="article?.title"></div>
+            <div class="article-digest" x-text="article?.digest"></div>
+            <div class="article-body" x-html="article?.content"></div>
+            <div class="article-keywords">
+              <template x-for="kw in (article?.keywords || [])" :key="kw">
+                <span class="article-keyword" x-text="kw"></span>
+              </template>
+            </div>
+          </div>
+          <div x-show="error" class="error-box" x-text="error"></div>
+          <div style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:1.5rem" x-show="!generating">
+            <button @click="startGeneration()" class="btn btn-secondary" x-show="article || error">重新生成</button>
+            <button @click="goToImages()" class="btn btn-primary" :disabled="!article" x-show="article">下一步：选择配图</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: 选择配图 -->
+      <div class="card step-enter" style="margin-bottom:1rem" x-show="step === 3">
+        <div class="card-header" style="cursor:default">
+          <div class="card-title">选择配图</div>
+          <div style="font-size:0.8125rem;color:var(--text-secondary)">
+            共 <span x-text="images.length"></span> 张图片，已选 <span x-text="selectedImages.length"></span> 张
+          </div>
+        </div>
+        <div class="card-body">
+          <div x-show="images.length === 0" style="text-align:center;padding:2rem;color:var(--text-muted)">
+            未找到配图，可以跳过此步骤直接发布
+          </div>
+          <div class="image-grid" x-show="images.length > 0">
+            <template x-for="(img, idx) in images" :key="idx">
+              <div @click="toggleImageSelection(idx)"
+                   class="image-item"
+                   :class="isImageSelected(idx) ? 'selected' : ''">
+                <img :src="img.thumb || img.url" :alt="img.source">
+                <div class="image-check" x-show="isImageSelected(idx)">
+                  <span x-text="getSelectedIndex(idx) + 1"></span>
+                </div>
+                <div class="image-item-overlay">
+                  <span x-text="img.source"></span>
+                  <span x-show="img.author"> · <span x-text="img.author"></span></span>
+                </div>
+                <div class="image-cover-tag" x-show="isImageSelected(idx) && selectedImages[0] === images[idx]">
+                  封面
+                </div>
+              </div>
+            </template>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:1.5rem">
+            <button @click="step = 2" class="btn btn-ghost">返回</button>
+            <button @click="publishArticle()" :disabled="publishing" class="btn btn-primary" style="min-width:8rem">
+              <span x-show="!publishing">发布到草稿箱</span>
+              <span x-show="publishing">发布中...</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: 发布成功 -->
+      <div class="card step-enter" x-show="step === 4">
+        <div class="card-body" style="text-align:center;padding:3rem">
+          <div class="success-icon">
+            <svg width="32" height="32" fill="none" stroke="#22c55e" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div style="font-size:1.25rem;font-weight:700;margin-bottom:0.5rem">发布成功！</div>
+          <div style="color:var(--text-secondary);margin-bottom:1.5rem" x-text="'文章《' + (article?.title || '') + '》已发布到微信草稿箱'"></div>
+          <div style="display:flex;gap:0.75rem;justify-content:center">
+            <button @click="startOver()" class="btn btn-secondary">再写一篇</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== HISTORY (inline) ==================== -->
+      <div x-show="step !== 0" x-data="historyPage()" x-init="load()" style="margin-top:3rem;border-top:1px solid var(--border);padding-top:1.5rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+          <h2 style="font-family:var(--font-serif);font-size:1rem;font-weight:700">发布历史</h2>
+          <button @click="expanded = !expanded" class="btn btn-sm btn-ghost" x-text="expanded ? '收起' : '查看更多'"></button>
+        </div>
+        <div x-show="items.length === 0" style="text-align:center;padding:1.5rem;color:var(--text-muted);font-size:0.8125rem">
+          暂无发布记录
+        </div>
+        <template x-for="item in displayItems" :key="item.id">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.625rem 0.75rem;border-bottom:1px solid var(--border-light);transition:var(--transition)">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:0.8125rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="item.title"></div>
+              <div style="font-size:0.6875rem;color:var(--text-muted);margin-top:0.15rem" x-text="new Date(item.created_at).toLocaleString()"></div>
+            </div>
+            <span class="badge" :class="item.status === 'success' ? 'badge-success' : 'badge-error'" x-text="item.status === 'success' ? '成功' : '失败'"></span>
+          </div>
+        </template>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ==================== ADMIN MODAL ==================== -->
+  <div class="modal-overlay" x-show="adminOpen" x-transition.opacity @click.self="closeAdmin()">
+    <div class="modal">
+
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--primary)">
+            <circle cx="12" cy="12" r="3" stroke-width="1.5"/>
+            <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          系统管理
+        </div>
+        <button @click="closeAdmin()" class="btn btn-icon btn-ghost">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <!-- Password Gate -->
+      <div x-show="!adminVerified" class="modal-body" style="padding:2.5rem">
+        <div style="text-align:center">
+          <div style="font-size:0.9375rem;font-weight:600;margin-bottom:0.5rem">管理员验证</div>
+          <div style="font-size:0.8125rem;color:var(--text-secondary);margin-bottom:1.5rem">请输入密码进入系统设置</div>
+          <input type="password" x-model="adminPassword" @keyup.enter="verifyAdmin()" class="form-input" placeholder="管理员密码" style="max-width:220px;text-align:center;font-size:1rem;margin:0 auto">
+          <div style="margin-top:1rem">
+            <button @click="verifyAdmin()" class="btn btn-primary" style="min-width:8rem">验证</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Admin Content -->
+      <div x-show="adminVerified" x-data="settingsPage()" x-init="load()">
+
+        <!-- Tabs -->
+        <div class="modal-tabs">
+          <button @click="switchAdminTab('ai')" class="modal-tab" :class="adminTab === 'ai' ? 'active' : ''">🤖 AI 模型</button>
+          <button @click="switchAdminTab('wechat')" class="modal-tab" :class="adminTab === 'wechat' ? 'active' : ''">🔑 公众号</button>
+          <button @click="switchAdminTab('image')" class="modal-tab" :class="adminTab === 'image' ? 'active' : ''">🖼️ 图片</button>
+          <button @click="switchAdminTab('schedule')" class="modal-tab" :class="adminTab === 'schedule' ? 'active' : ''">⏰ 定时</button>
+          <button @click="switchAdminTab('prompt')" class="modal-tab" :class="adminTab === 'prompt' ? 'active' : ''">📝 提示词</button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="modal-body">
+
+          <!-- AI Tab -->
+          <div x-show="adminTab === 'ai'">
+            <div class="form-group">
+              <label class="form-label">API 地址 <span class="help-trigger" @click="openHelpPanel('ai-provider-url')">?</span></label>
+              <div style="display:flex;gap:0.5rem">
+                <select @change="config['ai.provider_url'] = $event.target.value" class="form-select" style="width:12rem;flex-shrink:0">
+                  <option value="https://token-plan-cn.xiaomimimo.com/v1/chat/completions">小米 MIMO</option>
+                  <option value="https://api.deepseek.com/v1/chat/completions">DeepSeek</option>
+                  <option value="https://api.openai.com/v1/chat/completions">OpenAI</option>
+                  <option value="custom">自定义</option>
+                </select>
+                <input type="text" x-model="config['ai.provider_url']" class="form-input" placeholder="API URL">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">API Key <span class="help-trigger" @click="openHelpPanel('ai-api-key')">?</span></label>
+              <input type="password" x-model="config['ai.api_key']" class="form-input" placeholder="输入 API Key">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">模型名称 <span class="help-trigger" @click="openHelpPanel('ai-model')">?</span></label>
+                <input type="text" x-model="config['ai.model']" class="form-input" placeholder="如 mimo-v2.5-pro">
+              </div>
+              <div class="form-group">
+                <label class="form-label">最大 Token</label>
+                <input type="text" x-model="config['ai.max_tokens']" class="form-input" placeholder="3000">
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.75rem">
+              <button @click="testAI()" :disabled="testing.ai" class="btn btn-sm btn-secondary">
+                <span x-show="!testing.ai">测试连接</span>
+                <span x-show="testing.ai">测试中...</span>
+              </button>
+              <span x-show="testResults.ai" :class="testResults.ai?.success ? 'badge-success' : 'badge-error'" class="badge" x-text="testResults.ai?.success ? testResults.ai.message : testResults.ai?.error"></span>
+            </div>
+          </div>
+
+          <!-- WeChat Tab -->
+          <div x-show="adminTab === 'wechat'">
+            <div class="form-group">
+              <label class="form-label">全局 AppID <span class="help-trigger" @click="openHelpPanel('wechat-app-id')">?</span></label>
+              <input type="text" x-model="config['wechat.app_id']" class="form-input" placeholder="公众号 AppID">
+            </div>
+            <div class="form-group">
+              <label class="form-label">全局 AppSecret <span class="help-trigger" @click="openHelpPanel('wechat-app-secret')">?</span></label>
+              <input type="password" x-model="config['wechat.app_secret']" class="form-input" placeholder="公众号 AppSecret">
+            </div>
+            <div style="display:flex;align-items:center;gap:0.75rem">
+              <button @click="testWeChat()" :disabled="testing.wechat" class="btn btn-sm btn-secondary">
+                <span x-show="!testing.wechat">验证凭证</span>
+                <span x-show="testing.wechat">验证中...</span>
+              </button>
+              <span x-show="testResults.wechat" :class="testResults.wechat?.success ? 'badge-success' : 'badge-error'" class="badge" x-text="testResults.wechat?.success ? testResults.wechat.message : testResults.wechat?.error"></span>
+            </div>
+            <div style="margin-top:1rem;padding:0.75rem;background:var(--bg);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--text-muted);line-height:1.6">
+              配置全局公众号后，普通用户无需自己绑定即可发布。如果用户绑定了自己的公众号，则使用用户自己的凭证。
+            </div>
+          </div>
+
+          <!-- Image Tab -->
+          <div x-show="adminTab === 'image'">
+            <div class="form-group">
+              <label class="form-label">启用的图片来源</label>
+              <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.5rem">
+                <template x-for="src in imageSourceOptions" :key="src.value">
+                  <label style="display:flex;align-items:center;gap:0.375rem;padding:0.375rem 0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:0.375rem;cursor:pointer;font-size:0.8125rem">
+                    <input type="checkbox" :value="src.value"
+                           :checked="hasImageSource(src.value)"
+                           @change="toggleImageSource(src.value, $event.target.checked)"
+                           style="accent-color:var(--accent)">
+                    <span x-text="src.label"></span>
+                  </label>
+                </template>
+              </div>
+            </div>
+
+            <div x-show="hasImageSource('pexels')" class="form-group">
+              <label class="form-label">Pexels API Key <span class="help-trigger" @click="openHelpPanel('pexels-key')">?</span></label>
+              <input type="password" x-model="config['image.pexels_key']" class="form-input" placeholder="Pexels API Key">
+            </div>
+            <div x-show="hasImageSource('bing')" class="form-group">
+              <label class="form-label">Bing 图片搜索 API Key <span class="help-trigger" @click="openHelpPanel('bing-key')">?</span></label>
+              <input type="password" x-model="config['image.bing_key']" class="form-input" placeholder="Azure Bing Search API Key">
+            </div>
+            <div x-show="hasImageSource('cogview')" class="form-group">
+              <label class="form-label">智谱 CogView API Key <span class="help-trigger" @click="openHelpPanel('cogview-key')">?</span></label>
+              <input type="password" x-model="config['image.cogview_key']" class="form-input" placeholder="智谱开放平台 API Key">
+            </div>
+            <div x-show="hasImageSource('tongyi')" class="form-group">
+              <label class="form-label">通义万相 API Key <span class="help-trigger" @click="openHelpPanel('tongyi-key')">?</span></label>
+              <input type="password" x-model="config['image.tongyi_key']" class="form-input" placeholder="阿里云 DashScope API Key">
+            </div>
+            <div x-show="hasImageSource('custom-ai')" class="form-group">
+              <label class="form-label">自定义 AI 生图端点 <span class="help-trigger" @click="openHelpPanel('custom-ai-endpoint')">?</span></label>
+              <input type="text" x-model="config['image.ai_endpoint']" class="form-input" placeholder="https://your-api.com/generate">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">AI 生图数量</label>
+                <select x-model="config['image.ai_count']" class="form-select">
+                  <option value="0">0 张</option>
+                  <option value="1">1 张</option>
+                  <option value="2">2 张</option>
+                  <option value="3">3 张</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">图库搜索前缀</label>
+                <input type="text" x-model="config['image.query_prefix']" class="form-input" placeholder="如 nature, abstract">
+              </div>
+            </div>
+
+            <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-top:0.5rem">
+              <button @click="testPexels()" :disabled="testing.pexels" class="btn btn-sm btn-secondary" x-show="hasImageSource('pexels')">
+                <span x-show="!testing.pexels">测试 Pexels</span>
+                <span x-show="testing.pexels">测试中...</span>
+              </button>
+              <button @click="testBing()" :disabled="testing.bing" class="btn btn-sm btn-secondary" x-show="hasImageSource('bing')">
+                <span x-show="!testing.bing">测试 Bing</span>
+                <span x-show="testing.bing">测试中...</span>
+              </button>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-top:0.5rem">
+              <span x-show="testResults.pexels" :class="testResults.pexels?.success ? 'badge-success' : 'badge-error'" class="badge" x-text="testResults.pexels?.success ? testResults.pexels.message : testResults.pexels?.error"></span>
+              <span x-show="testResults.bing" :class="testResults.bing?.success ? 'badge-success' : 'badge-error'" class="badge" x-text="testResults.bing?.success ? testResults.bing.message : testResults.bing?.error"></span>
+            </div>
+          </div>
+
+          <!-- Schedule Tab -->
+          <div x-show="adminTab === 'schedule'">
+            <div class="form-group">
+              <label class="form-label">执行频率</label>
+              <div style="display:flex;gap:0.75rem;align-items:center">
+                <select x-model="scheduleFrequency" @change="updateCronFromSchedule()" class="form-select" style="width:10rem">
+                  <option value="daily">每天</option>
+                  <option value="weekdays">工作日</option>
+                  <option value="weekend">周末</option>
+                </select>
+                <input type="time" x-model="scheduleTime" @change="updateCronFromSchedule()" class="form-input" style="width:10rem">
+              </div>
+              <div class="form-hint" x-text="describeSchedule()"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Cron 表达式</label>
+              <input type="text" x-model="config['schedule.cron']" class="form-input" placeholder="0 20 * * *">
+              <div class="form-hint">高级用户可手动编辑 Cron 表达式，修改频率和时间后自动生成</div>
+            </div>
+            <div style="padding:0.75rem;background:var(--bg);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--text-muted);line-height:1.6">
+              全局定时发布使用系统配置的全局公众号凭证自动发布文章。此任务在服务器启动时自动激活。
+            </div>
+          </div>
+
+          <!-- Prompt Tab -->
+          <div x-show="adminTab === 'prompt'">
+            <div class="form-group">
+              <label class="form-label">系统提示词</label>
+              <textarea x-model="config['prompt.system']" rows="4" class="form-textarea" placeholder="定义 AI 的角色和写作风格..."></textarea>
+              <div class="form-hint">留空则使用内置默认提示词</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">用户提示词</label>
+              <textarea x-model="config['prompt.user']" rows="8" class="form-textarea" placeholder="定义文章的具体要求和输出格式..."></textarea>
+              <div class="form-hint">
+                使用 <code>{topic}</code> 作为文章主题占位符。留空则使用内置默认提示词
+              </div>
+            </div>
+          </div>
+
+          <!-- Save -->
+          <div style="display:flex;justify-content:flex-end;padding-top:1rem;border-top:1px solid var(--border-light);margin-top:1rem">
+            <button @click="saveConfig()" :disabled="saving" class="btn btn-primary" style="min-width:8rem">
+              <span x-show="!saving">保存配置</span>
+              <span x-show="saving">保存中...</span>
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help Panel -->
+  <div class="help-overlay" :class="helpPanel.open ? 'active' : ''" @click="closeHelpPanel()"></div>
+  <aside class="help-panel" :class="helpPanel.open ? 'open' : ''" @keydown.escape.window="closeHelpPanel()">
+    <div class="help-panel-header">
+      <div class="help-panel-title" x-text="currentTopic?.title || ''"></div>
+      <button class="btn btn-icon btn-ghost" @click="closeHelpPanel()" aria-label="关闭帮助">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="help-panel-body">
+      <template x-if="currentTopic">
+        <div>
+          <template x-for="(step, index) in currentTopic.steps" :key="index">
+            <div class="help-step">
+              <div class="help-step-title">
+                <span class="help-step-number" x-text="index + 1"></span>
+                <span x-text="step.title"></span>
+              </div>
+              <div class="help-step-body" x-html="step.body"></div>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+  </aside>
+
+  <script src="/js/api.js?v=10"></script>
+  <script src="/js/app.js?v=10"></script>
+</body>
+</html>
